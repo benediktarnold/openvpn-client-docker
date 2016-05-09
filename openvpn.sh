@@ -183,7 +183,13 @@ elif ps -ef | egrep -v 'grep|openvpn.sh' | grep -q openvpn; then
     echo "Service already running, please restart container to apply changes"
 else
     [[ -e /vpn/vpn.conf ]] || { echo "ERROR: VPN not configured!"; sleep 120; }
-    [[ -e /vpn/vpn-ca.crt ]] || { echo "ERROR: VPN cert missing!"; sleep 120; }
+
+    # If and only if a cert file is specified, check that it exists
+    cert_file="$(awk '$1=="ca"{print $2}' /vpn/vpn.conf)"
+    [[ -z "$cert_file" ]] ||
+        [[ -e "$cert_file" ]] ||
+        { echo "ERROR: VPN cert missing!"; sleep 120; }
+
     [[ -x /sbin/resolvconf ]] || { cat >/sbin/resolvconf <<-EOF
 		#!/usr/bin/env bash
 		conf=/etc/resolv.conf
