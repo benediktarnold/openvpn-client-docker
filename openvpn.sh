@@ -141,11 +141,19 @@ The 'command' (if provided and valid) will be run instead of openvpn
     exit $RC
 }
 
+# Convert ENV options into CLI parameters.
+# Push into front of positional params so explicit params can override.
+[[ "${FIREWALL:-""}" ]] && set -- -f          "$@"
+[[ "${ROUTE:-""}" ]]    && set -- -r "$ROUTE" "$@"
+[[ "${TZ:-""}" ]]       && set -- -t "$TZ"    "$@"
+[[ "${VPN:-""}" ]]      && set -- -v "$VPN"   "$@"
+[[ "${DNS:-""}" ]]      && set -- -d          "$@"
+
 while getopts ":hdfr:t:v:" opt; do
     case "$opt" in
         h) usage ;;
-        d) DNS=true ;;
-        f) firewall; touch /vpn/.firewall ;;
+        d) dns ;;
+        f) firewall ;;
         r) return_route "$OPTARG" ;;
         t) timezone "$OPTARG" ;;
         v) eval vpn $(sed 's/^\|$/"/g; s/;/" "/g' <<< $OPTARG) ;;
@@ -155,11 +163,6 @@ while getopts ":hdfr:t:v:" opt; do
 done
 shift $(( OPTIND - 1 ))
 
-[[ "${FIREWALL:-""}" || -e /vpn/.firewall ]] && firewall
-[[ "${ROUTE:-""}" ]] && return_route "$ROUTE"
-[[ "${TZ:-""}" ]] && timezone "$TZ"
-[[ "${VPN:-""}" ]] && eval vpn $(sed 's/^\|$/"/g; s/;/" "/g' <<< $VPN)
-[[ "${DNS:-""}" ]] && dns
 
 if [[ $# -ge 1 && -x $(which $1 2>&-) ]]; then
     exec "$@"
