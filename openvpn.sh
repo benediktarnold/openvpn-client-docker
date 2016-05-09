@@ -18,17 +18,22 @@
 
 set -o nounset                              # Treat unset variables as an error
 
+# Extra options to pass to the `openvpn` invocation
+OPENVPN_OPTS=""
+
 ### dns: setup openvpn client DNS
 # Arguments:
 #   none)
-# Return: conf file that uses VPN provider's DNS resolvers
-dns() { local conf="/vpn/vpn.conf"
+# Return: options to use VPN provider's DNS resolvers
+dns() {
+    OPENVPN_OPTS="${OPENVPN_OPTS} --script-security 2"
+    OPENVPN_OPTS="${OPENVPN_OPTS} --up   /etc/openvpn/update-resolv-conf"
+    OPENVPN_OPTS="${OPENVPN_OPTS} --down /etc/openvpn/update-resolv-conf"
 
-    sed -i '/resolv-*conf/d; /script-security/d' $conf
-    echo "# This updates the resolvconf with dns settings" >>$conf
-    echo "script-security 2" >>$conf
-    echo "up /etc/openvpn/update-resolv-conf" >>$conf
-    echo "down /etc/openvpn/update-resolv-conf" >>$conf
+    dns() {
+        # no-op further calls
+        true
+    }
 }
 
 ### firewall: firewall all output not DNS/VPN that's not over the VPN
@@ -86,10 +91,10 @@ timezone() { local timezone="${1:-EST5EDT}"
 #   pass) password on VPN
 # Return: configured .ovpn file
 vpn() { local server="$1" user="$2" pass="$3" \
-            conf="/vpn/vpn.conf" auth="/vpn/vpn.auth"
+            auth="/vpn/vpn.auth"
 
-    echo "remote $server 1194" >>$conf
-    echo "auth-user-pass $auth" >>$conf
+    OPENVPN_OPTS="$OPENVPN_OPTS --remote $server 1194"
+    OPENVPN_OPTS="$OPENVPN_OPTS --user-pass-auth $auth"
 
     echo "$user" >$auth
     echo "$pass" >>$auth
@@ -168,5 +173,5 @@ else
 		fi
 		EOF
         chmod +x /sbin/resolvconf; }
-    exec sg vpn -c "openvpn --config /vpn/vpn.conf"
+    exec sg vpn -c "openvpn --config /vpn/vpn.conf $OPENVPN_OPTS"
 fi
