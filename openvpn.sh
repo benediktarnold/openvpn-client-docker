@@ -201,5 +201,9 @@ else
 		fi
 		EOF
         chmod +x /sbin/resolvconf; }
+
+    # create the tun device
+    [ -d /dev/net ] || mkdir -p /dev/net
+    [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
     exec sg vpn -c "openvpn --config /vpn/vpn.conf $OPENVPN_OPTS"
 fi
