@@ -88,25 +88,8 @@ timezone() { local timezone="${1:-EST5EDT}"
 vpn() { local server="$1" user="$2" pass="$3" \
             conf="/vpn/vpn.conf" auth="/vpn/vpn.auth"
 
-    cat >$conf <<-EOF
-		client
-		dev tun
-		proto udp
-		remote $server 1194
-		resolv-retry infinite
-		nobind
-		persist-key
-		persist-tun
-		ca /vpn/vpn-ca.crt
-		tls-client
-		remote-cert-tls server
-		auth-user-pass
-		comp-lzo
-		verb 1
-		reneg-sec 0
-		redirect-gateway def1
-		auth-user-pass $auth
-		EOF
+    echo "remote $server 1194" >>$conf
+    echo "auth-user-pass $auth" >>$conf
 
     echo "$user" >$auth
     echo "$pass" >>$auth

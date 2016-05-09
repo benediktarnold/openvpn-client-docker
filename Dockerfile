@@ -10,6 +10,7 @@ RUN export DEBIAN_FRONTEND='noninteractive' && \
     rm -rf /var/lib/apt/lists/* /tmp/* && \
     addgroup --system vpn
 COPY openvpn.sh /usr/bin/
+COPY vpn.conf /vpn/
 
 VOLUME ["/vpn"]
 
