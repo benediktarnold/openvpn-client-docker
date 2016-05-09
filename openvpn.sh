@@ -84,21 +84,39 @@ timezone() { local timezone="${1:-EST5EDT}"
     fi
 }
 
+# Add option to openvpn invocation to read auth from file
+_auth() { local auth_file="$1"
+    OPENVPN_OPTS="$OPENVPN_OPTS --auth-user-pass $auth_file"
+
+    _auth() {
+        # no-op further calls
+        true
+    }
+}
+
+### auth: setup openvpn auth
+# Arguments:
+#   user) user name on VPN
+#   pass) password on VPN
+auth() { local user="$1" pass="$2" \
+               auth_file="/vpn/vpn.auth"
+
+    echo "$user" >$auth_file
+    echo "$pass" >>$auth_file
+    chmod 0600 $auth_file
+
+    _auth "$auth_file"
+}
+
 ### vpn: setup openvpn client
 # Arguments:
 #   server) VPN GW server
 #   user) user name on VPN
 #   pass) password on VPN
 # Return: configured .ovpn file
-vpn() { local server="$1" user="$2" pass="$3" \
-            auth="/vpn/vpn.auth"
-
+vpn() { local server="$1" user="$2" pass="$3"
     OPENVPN_OPTS="$OPENVPN_OPTS --remote $server 1194"
-    OPENVPN_OPTS="$OPENVPN_OPTS --user-pass-auth $auth"
-
-    echo "$user" >$auth
-    echo "$pass" >>$auth
-    chmod 0600 $auth
+    auth "$user" "$pass"
 }
 
 ### usage: Help
@@ -110,6 +128,9 @@ usage() { local RC=${1:-0}
     echo "Usage: ${0##*/} [-opt] [command]
 Options (fields in '[]' are optional, '<>' are required):
     -h          This help
+    -a \"<user>;<pass>\" VPN server authentication
+                <user> to authenticate as
+                <pass> to authenticate with
     -d          Use the VPN provider's DNS resolvers
     -f          Firewall rules so that only the VPN and DNS are allowed to
                 send internet traffic (IE if VPN is down it's offline)
@@ -137,11 +158,12 @@ The 'command' (if provided and valid) will be run instead of openvpn
 [[ "${VPN:-""}" ]]      && set -- -v "$VPN"   "$@"
 [[ "${DNS:-""}" ]]      && set -- -d          "$@"
 
-while getopts ":hdfr:t:v:" opt; do
+while getopts ":ha:dfr:t:v:" opt; do
     case "$opt" in
         h) usage ;;
         d) dns ;;
         f) firewall ;;
+        a) auth "${OPTARG%%;*}" "${OPTARG#*;}" ;;
         r) return_route "$OPTARG" ;;
         t) timezone "$OPTARG" ;;
         v) eval vpn $(sed 's/^\|$/"/g; s/;/" "/g' <<< $OPTARG) ;;
